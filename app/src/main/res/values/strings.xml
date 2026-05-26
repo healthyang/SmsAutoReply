@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">短信自动回复</string>
+    <string name="auto_reply">自动回复</string>
+    <string name="manage_rules">管理回复规则</string>
+    <string name="view_history">查看历史记录</string>
+    <string name="app_settings">应用设置</string>
+    <string name="recent_sms">最近处理的短信：</string>
+    <string name="permission_granted">所有权限已授予</string>
+    <string name="permission_success">权限申请成功</string>
+    <string name="permission_denied">部分权限被拒绝，应用可能无法正常工作</string>
+    <string name="analyzing_sms">分析短信中</string>
+    <string name="sending_reply">发送自动回复</string>
+    <string name="accessibility_service_description">短信自动回复需要此权限来自动点击发送短信确认弹窗，实现全自动回复。此服务仅用于点击短信发送确认按钮，不会收集任何个人信息。</string>
+</resources>
