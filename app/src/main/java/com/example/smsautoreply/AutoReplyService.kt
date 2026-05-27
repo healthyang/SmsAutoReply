@@ -112,12 +112,10 @@ class AutoReplyService : Service() {
 
     private fun sendAutoReply(recipient: String, message: String) {
         try {
-            // 检查是否为默认短信应用
-            if (!isDefaultSmsApp()) {
-                Log.w(TAG, "Not default SMS app, may require user confirmation on some devices")
-            }
-
             Log.d(TAG, "Attempting to send SMS to $recipient, message length: ${message.length}")
+
+            // 点亮屏幕，确保无障碍服务能操作确认弹窗
+            wakeUpScreen()
 
             // 通知无障碍服务准备自动点击确认弹窗
             SmsAutoClickService.isWaitingForSmsConfirm = true
@@ -178,19 +176,20 @@ class AutoReplyService : Service() {
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
-    private fun isDefaultSmsApp(): Boolean {
+    private fun wakeUpScreen() {
         try {
-            // 使用PackageManager检查默认短信应用
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.type = "vnd.android-dir/mms-sms"
-            val resolveInfo = packageManager.resolveActivity(intent, 0)
-            val defaultSmsPackage = resolveInfo?.activityInfo?.packageName
-            val result = packageName == defaultSmsPackage
-            Log.d(TAG, "Is default SMS app: $result, default package: $defaultSmsPackage")
-            return result
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!pm.isInteractive) {
+                val screenLock = pm.newWakeLock(
+                    PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "SmsAutoReply::SCREEN_WAKE"
+                )
+                screenLock.acquire(10_000L)
+                screenLock.release()
+                Log.d(TAG, "Screen woken up")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking default SMS app: ${e.message}")
-            return false
+            Log.e(TAG, "Error waking screen: ${e.message}")
         }
     }
 }
