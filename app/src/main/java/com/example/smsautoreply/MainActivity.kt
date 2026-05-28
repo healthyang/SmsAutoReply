@@ -1,6 +1,5 @@
 package com.example.smsautoreply
 
-import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -18,7 +17,6 @@ import androidx.core.content.ContextCompat
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val TAG = "MainActivity"
         private const val REQUEST_SMS_PERMISSIONS = 1001
         private val REQUIRED_PERMISSIONS = arrayOf(
             android.Manifest.permission.RECEIVE_SMS,
@@ -59,7 +57,6 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val pm = getSystemService(PowerManager::class.java)
             if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                Toast.makeText(this, "请将应用添加到电池优化白名单", Toast.LENGTH_LONG).show()
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
                 intent.data = android.net.Uri.parse("package:$packageName")
                 startActivityForResult(intent, 1003)
@@ -94,59 +91,29 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "测试短信已发送", Toast.LENGTH_SHORT).show()
         }
 
-        val statusCheckButton = Button(this)
-        statusCheckButton.text = "检查服务状态"
-        statusCheckButton.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        statusCheckButton.setPadding(0, 16, 0, 16)
-        statusCheckButton.setOnClickListener {
-            if (isServiceRunning(SmsAnalysisService::class.java)) {
-                Toast.makeText(this, "后台服务运行正常", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "后台服务未运行，正在启动...", Toast.LENGTH_SHORT).show()
-                startSmsAnalysisService()
-            }
-        }
-
-        val restartServiceButton = Button(this)
-        restartServiceButton.text = "重启后台服务"
-        restartServiceButton.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        restartServiceButton.setPadding(0, 16, 0, 16)
-        restartServiceButton.setOnClickListener {
-            startSmsAnalysisService()
-            Toast.makeText(this, "后台服务已重启", Toast.LENGTH_SHORT).show()
-        }
-
         val permissionButton = Button(this)
-        permissionButton.text = "打开权限设置"
+        permissionButton.text = "权限设置"
         permissionButton.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         permissionButton.setPadding(0, 16, 0, 16)
         permissionButton.setOnClickListener { openAppSettings() }
 
         val notificationListenerButton = Button(this)
-        notificationListenerButton.text = "开启通知监听（读取短号短信）"
+        notificationListenerButton.text = "开启通知监听"
         notificationListenerButton.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
         notificationListenerButton.setPadding(0, 16, 0, 16)
         notificationListenerButton.setOnClickListener { openNotificationListenerSettings() }
 
-        val accessibilityStatusText = android.widget.TextView(this)
-        accessibilityStatusText.textSize = 14f
-        accessibilityStatusText.setPadding(0, 24, 0, 8)
-        updateAccessibilityStatus(accessibilityStatusText)
-
-        val accessibilityButton = Button(this)
-        accessibilityButton.text = "开启无障碍服务（自动点击确认弹窗）"
-        accessibilityButton.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        accessibilityButton.setPadding(0, 16, 0, 16)
-        accessibilityButton.setOnClickListener { openAccessibilitySettings() }
+        val hintText = android.widget.TextView(this)
+        hintText.textSize = 12f
+        hintText.setPadding(16, 24, 16, 8)
+        hintText.text = "提示：发送短信时如弹出确认框，请手动点击确认"
+        hintText.setTextColor(0xFF757575.toInt())
 
         val rootLayout = findViewById<LinearLayout>(R.id.rootLayout)
         rootLayout.addView(permissionStatusText, 2)
-        rootLayout.addView(statusCheckButton)
-        rootLayout.addView(restartServiceButton)
         rootLayout.addView(permissionButton)
         rootLayout.addView(notificationListenerButton)
-        rootLayout.addView(accessibilityStatusText)
-        rootLayout.addView(accessibilityButton)
+        rootLayout.addView(hintText)
     }
 
     private fun isNotificationListenerEnabled(): Boolean {
@@ -165,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         sb.append("• 接收短信: ${if (hasReceiveSms) "✓ 已授权" else "✗ 未授权"}\n")
         sb.append("• 通知监听: ${if (isNotificationListener) "✓ 已开启" else "✗ 未开启"}")
 
-        if (!hasSendSms) sb.append("\n\n⚠️ 发送短信权限未授权，自动回复将弹窗确认")
+        if (!hasSendSms) sb.append("\n\n⚠️ 发送短信权限未授权")
         if (!isNotificationListener) sb.append("\n\n⚠️ 通知监听未开启，短号短信无法自动回复")
 
         if (::permissionStatusText.isInitialized) {
@@ -174,35 +141,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        if (SmsAutoClickService.isRunning) return true
-        try {
-            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            return !enabled.isNullOrEmpty() && (enabled.contains("SmsAutoClickService", ignoreCase = true) || enabled.contains(packageName, ignoreCase = true))
-        } catch (_: Exception) { return false }
-    }
-
-    private fun updateAccessibilityStatus(statusText: android.widget.TextView) {
-        val enabled = isAccessibilityServiceEnabled()
-        statusText.text = if (enabled) "无障碍服务: ✓ 已开启（自动点击确认弹窗）" else "无障碍服务: ✗ 未开启（发送短信会弹窗确认）"
-        statusText.setTextColor(if (enabled) 0xFF4CAF50.toInt() else 0xFFFF9800.toInt())
-    }
-
     private fun openNotificationListenerSettings() {
         try {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             Toast.makeText(this, "请找到「短信自动回复」并开启通知监听权限", Toast.LENGTH_LONG).show()
         } catch (_: Exception) {
             Toast.makeText(this, "无法打开通知监听设置", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun openAccessibilitySettings() {
-        try {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            Toast.makeText(this, "请找到「短信自动回复」并开启无障碍服务", Toast.LENGTH_LONG).show()
-        } catch (_: Exception) {
-            Toast.makeText(this, "无法打开无障碍设置", Toast.LENGTH_SHORT).show()
         }
     }
 
